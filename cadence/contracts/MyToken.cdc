@@ -1,4 +1,3 @@
-// MyToken contract for a simple fungible token, updated for Cadence 1.0 (July 2025)
 access(all) contract MyToken {
     // Total supply of tokens
     access(all) var totalSupply: UFix64

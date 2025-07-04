@@ -1,11 +1,6 @@
 {
 	"contracts": {
-		"Counter": {
-			"source": "cadence/contracts/Counter.cdc",
-			"aliases": {
-				"testing": "0000000000000007"
-			}
-		}
+		"MyToken": "./cadence/contracts/MyToken.cdc"
 	},
 	"dependencies": {
 		"Burner": {
@@ -85,6 +80,17 @@
 				"type": "file",
 				"location": "emulator-account.pkey"
 			}
+		},
+		"test": {
+			"address": "179b6b1cb6755e31",
+			"key": "59232057fe2d7a335ed835e84c10c2d44714d83082d3e4d505a72a584f9f076f"
+		}
+	},
+	"deployments": {
+		"emulator": {
+			"emulator-account": [
+				"MyToken"
+			]
 		}
 	}
 }
