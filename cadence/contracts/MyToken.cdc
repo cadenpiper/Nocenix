@@ -1,11 +1,20 @@
-access(all) contract MyToken {
+import FungibleToken from "FungibleToken"
+import FungibleTokenMetadataViews from "FungibleTokenMetadataViews"
+import MetadataViews from "MetadataViews"
+
+access(all) contract MyToken: FungibleToken {
     // Total supply of tokens
     access(all) var totalSupply: UFix64
 
-    // Event for minted tokens
-    access(all) event TokensMinted(amount: UFix64, to: Address)
+    // Storage and public paths
+    access(all) let VaultStoragePath: StoragePath
+    access(all) let VaultPublicPath: PublicPath
+    access(all) let ReceiverPublicPath: PublicPath
+    access(all) let AdminStoragePath: StoragePath
 
-    // Event for transferred tokens, 'to' is optional
+    // Events
+    access(all) event TokensInitialized(InitialSupply: UFix64)
+    access(all) event TokensMinted(amount: UFix64, to: Address)
     access(all) event TokensTransferred(amount: UFix64, from: Address, to: Address?)
 
     // Vault resource to store tokens
@@ -18,12 +27,12 @@ access(all) contract MyToken {
             self.balance = balance
         }
 
-        // Deposit tokens (public)
+        // Deposit tokens
         access(all) fun deposit(amount: UFix64) {
             self.balance = self.balance + amount
         }
 
-        // Withdraw tokens (public for simplicity)
+        // Withdraw tokens
         access(all) fun withdraw(amount: UFix64, from: Address): @Vault {
             pre { amount <= self.balance: "Insufficient balance" }
             self.balance = self.balance - amount
@@ -31,7 +40,7 @@ access(all) contract MyToken {
             return <- create Vault(balance: amount)
         }
 
-        // Get balance (public)
+        // Get balance
         access(all) fun getBalance(): UFix64 {
             return self.balance
         }
@@ -51,27 +60,35 @@ access(all) contract MyToken {
         }
     }
 
-    // Contract initializer
-    init() {
-        self.totalSupply = 0.0
-
-        // Save Admin resource
-        let admin <- create Admin()
-        self.account.storage.save(<-admin, to: /storage/MyTokenAdmin)
-
-        // Save empty Vault
-        let vault <- create Vault(balance: 0.0)
-        self.account.storage.save(<-vault, to: /storage/MyTokenVault)
-
-        // Publish public capability
-        self.account.capabilities.publish(
-            self.account.capabilities.storage.issue<&MyToken.Vault>(/storage/MyTokenVault),
-            at: /public/MyTokenVault
-        )
-    }
-
     // Create a new empty vault
     access(all) fun createVault(): @Vault {
         return <- create Vault(balance: 0.0)
+    }
+
+    // Contract initializer
+    init() {
+        self.totalSupply = 0.0
+        self.VaultStoragePath = /storage/MyTokenVault
+        self.VaultPublicPath = /public/MyTokenVault
+        self.ReceiverPublicPath = /public/MyTokenReceiver
+        self.AdminStoragePath = /storage/MyTokenAdmin
+
+        // Save Admin resource
+        let admin <- create Admin()
+        self.account.storage.save(<-admin, to: self.AdminStoragePath)
+
+        // Save empty Vault
+        let vault <- create Vault(balance: 0.0)
+        self.account.storage.save(<-vault, to: self.VaultStoragePath)
+
+        // Publish capabilities
+        let vaultCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
+        self.account.capabilities.publish(vaultCap, at: self.VaultPublicPath)
+
+        let receiverCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
+        self.account.capabilities.publish(receiverCap, at: self.VaultPublicPath)
+
+        // Emit TokensInitialized event
+        emit TokensInitialized(InitialSupply: 0.0)
     }
 }
