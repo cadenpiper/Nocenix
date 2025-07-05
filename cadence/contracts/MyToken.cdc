@@ -1,21 +1,18 @@
 import FungibleToken from "FungibleToken"
 
 access(all) contract MyToken: FungibleToken {
-    // Total supply of tokens
     access(all) var totalSupply: UFix64
-
-    // Storage and public paths
+    access(all) let maxSupply: UFix64
     access(all) let VaultStoragePath: StoragePath
     access(all) let VaultPublicPath: PublicPath
     access(all) let ReceiverPublicPath: PublicPath
     access(all) let AdminStoragePath: StoragePath
 
-    // Events (update TokensMinted to include recipient)
     access(all) event TokensInitialized(initialSupply: UFix64)
-    access(all) event TokensMinted(amount: UFix64, to: Address?) // Modified
+    access(all) event TokensMinted(amount: UFix64, to: Address?)
+    access(all) event TokensBurned(amount: UFix64, from: Address?)
     access(all) event TokensTransferred(amount: UFix64, from: Address?, to: Address?)
 
-    // Vault resource (unchanged)
     access(all) resource Vault: FungibleToken.Vault {
         access(all) var balance: UFix64
 
@@ -35,6 +32,13 @@ access(all) contract MyToken: FungibleToken {
             self.balance = self.balance + vault.balance
             emit TokensTransferred(amount: vault.balance, from: vault.owner?.address, to: self.owner!.address)
             destroy vault
+        }
+
+        access(all) fun burn(amount: UFix64) {
+            pre { amount <= self.balance: "Insufficient balance" }
+            self.balance = self.balance - amount
+            MyToken.totalSupply = MyToken.totalSupply - amount
+            emit TokensBurned(amount: amount, from: self.owner?.address)
         }
 
         access(all) view fun getBalance(): UFix64 {
@@ -68,13 +72,30 @@ access(all) contract MyToken: FungibleToken {
         }
     }
 
-    // Replace Admin with Minter
-    access(all) resource Minter {
-        access(all) fun mintTokens(amount: UFix64, to: Address?): @MyToken.Vault {
+    access(all) resource Admin {
+        access(all) fun mintAndBurn(amount: UFix64, to: Address) {
+            // Borrow contract vault to retrieve values: balance, current supply, and max supply
+            let contractVault = MyToken.account.storage.borrow<&MyToken.Vault>(from: MyToken.VaultStoragePath)
+                ?? panic("Contract vault not found")
+            let contractBalance = contractVault.balance
+            let currentSupply = MyToken.totalSupply
+            let maxSupply = MyToken.maxSupply
+
+            assert(amount <= contractBalance, message: "Insufficient contract balance")
+            assert(currentSupply <= maxSupply, message: "Exceeds max supply")
+
+            // Burn tokens before minting
+            contractVault.burn(amount: amount)
+
+            // Recalibrate total supply
             MyToken.totalSupply = MyToken.totalSupply + amount
-            let vault <- create Vault(balance: amount)
+            
+            // Mint amount to user account
+            let userVaultCap: Capability<&{FungibleToken.Vault}> = getAccount(to).capabilities.get<&{FungibleToken.Vault}>(MyToken.ReceiverPublicPath)
+            let userVault: &{FungibleToken.Vault} = userVaultCap.borrow() ?? panic("User vault not found")
+            let newVault <- create Vault(balance: amount)
+            userVault.deposit(from: <-newVault)
             emit TokensMinted(amount: amount, to: to)
-            return <-vault
         }
     }
 
@@ -91,17 +112,14 @@ access(all) contract MyToken: FungibleToken {
     }
 
     init() {
-        self.totalSupply = 0.0
+        self.totalSupply = 1000000000.0
+        self.maxSupply = 1000000000.0
         self.VaultStoragePath = /storage/MyTokenVault
         self.VaultPublicPath = /public/MyTokenVault
         self.ReceiverPublicPath = /public/MyTokenReceiver
         self.AdminStoragePath = /storage/MyTokenAdmin
 
-        // Save Minter (changed from Admin)
-        let minter <- create Minter()
-        self.account.storage.save(<-minter, to: self.AdminStoragePath)
-
-        let vault <- create Vault(balance: 0.0)
+        let vault <- create Vault(balance: self.totalSupply)
         self.account.storage.save(<-vault, to: self.VaultStoragePath)
 
         let vaultCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
@@ -109,6 +127,9 @@ access(all) contract MyToken: FungibleToken {
         let receiverCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
         self.account.capabilities.publish(receiverCap, at: self.ReceiverPublicPath)
 
-        emit TokensInitialized(initialSupply: 0.0)
+        let admin <- create Admin()
+        self.account.storage.save(<-admin, to: self.AdminStoragePath)
+
+        emit TokensInitialized(initialSupply: self.totalSupply)
     }
 }

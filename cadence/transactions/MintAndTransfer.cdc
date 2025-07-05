@@ -2,32 +2,35 @@ import FungibleToken from "FungibleToken"
 import MyToken from "MyToken"
 
 transaction(amount: UFix64, recipient: Address) {
-    let minter: &MyToken.Minter
-    let recipientVault: &MyToken.Vault
+    let admin: &MyToken.Admin
+    let recipientVault: &{FungibleToken.Vault}
 
-    prepare(admin: auth(Storage) &Account, recipientAcct: auth(Storage, Capabilities) &Account) {
-        self.minter = admin.storage.borrow<&MyToken.Minter>(from: MyToken.AdminStoragePath)
-            ?? panic("Minter not found")
+    prepare(adminAcct: auth(Storage, Capabilities) &Account, recipientAcct: auth(Storage, Capabilities) &Account) {
+        // Borrow Admin resource
+        self.admin = adminAcct.storage.borrow<&MyToken.Admin>(from: MyToken.AdminStoragePath)
+            ?? panic("Admin not found")
 
+        // Check if recipient has a vault, create if not
         if recipientAcct.storage.borrow<&MyToken.Vault>(from: MyToken.VaultStoragePath) == nil {
             let vault <- MyToken.createEmptyVault(vaultType: Type<@MyToken.Vault>())
             recipientAcct.storage.save(<-vault, to: MyToken.VaultStoragePath)
+
             let vaultCap = recipientAcct.capabilities.storage
-                .issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+                .issue<&{FungibleToken.Vault}>(MyToken.VaultStoragePath)
             recipientAcct.capabilities.publish(vaultCap, at: MyToken.VaultPublicPath)
+
             let receiverCap = recipientAcct.capabilities.storage
-                .issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+                .issue<&{FungibleToken.Vault}>(MyToken.VaultStoragePath)
             recipientAcct.capabilities.publish(receiverCap, at: MyToken.ReceiverPublicPath)
         }
 
-        self.recipientVault = recipientAcct.capabilities
-            .get<&MyToken.Vault>(MyToken.ReceiverPublicPath)
-            .borrow()
-            ?? panic("Recipient Vault not found")
+        // Borrow recipient vault
+        let vaultCap = recipientAcct.capabilities.get<&{FungibleToken.Vault}>(MyToken.ReceiverPublicPath)
+        self.recipientVault = vaultCap.borrow() ?? panic("Recipient vault not found")
     }
 
     execute {
-        let newVault <- self.minter.mintTokens(amount: amount, to: recipient)
-        self.recipientVault.deposit(from: <-newVault)
+        // Call mintAndBurn to burn from contract vault and mint to recipient
+        self.admin.mintAndBurn(amount: amount, to: recipient)
     }
 }
