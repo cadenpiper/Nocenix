@@ -81,9 +81,9 @@
 				"location": "emulator-account.pkey"
 			}
 		},
-		"test": {
+		"recipient-account": {
 			"address": "179b6b1cb6755e31",
-			"key": "59232057fe2d7a335ed835e84c10c2d44714d83082d3e4d505a72a584f9f076f"
+			"key": "cf7aa0726186b6f7f6c73e6af257122fb32563b15ca690144a6f240e634d4ee8"
 		}
 	},
 	"deployments": {

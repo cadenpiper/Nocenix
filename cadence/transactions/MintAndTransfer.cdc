@@ -1,35 +1,52 @@
+import FungibleToken from "FungibleToken"
 import MyToken from "MyToken"
 
 transaction(amount: UFix64, recipient: Address) {
-    prepare(signer: auth(Storage, Capabilities) &Account) {
-        // Borrow Admin resource
-        let admin = signer.storage.borrow<&MyToken.Admin>(from: /storage/MyTokenAdmin)
-            ?? panic("Admin resource not found")
-        log("Borrowed Admin resource")
+    let admin: &MyToken.Admin
+    let recipientVault: &{FungibleToken.Vault}
+    let senderVault: auth(FungibleToken.Withdraw) &MyToken.Vault
+    let signerAddress: Address
+    let initialSenderBalance: UFix64
+    let initialRecipientBalance: UFix64
 
-        // Mint tokens to recipient
-        admin.mintTokens(amount: amount, recipient: recipient)
-        log("Minted ".concat(amount.toString()).concat(" tokens to ").concat(recipient.toString()))
+    prepare(signer: auth(Storage, Capabilities, FungibleToken.Withdraw) &Account, recipientAcct: auth(Storage, Capabilities) &Account) {
+        self.signerAddress = signer.address
+        self.admin = signer.storage.borrow<&MyToken.Admin>(from: MyToken.AdminStoragePath)
+            ?? panic("Admin not found")
 
-        // Borrow signer's vault
-        let signerVault = signer.storage.borrow<&MyToken.Vault>(from: /storage/MyTokenVault)
-            ?? panic("Signer vault not found")
-        log("Borrowed signer vault")
-
-        // Borrow recipient's vault
-        let recipientVault = getAccount(recipient)
-            .capabilities.get<&MyToken.Vault>(/public/MyTokenVault)
-            .borrow()
+        if recipientAcct.storage.borrow<&MyToken.Vault>(from: MyToken.VaultStoragePath) == nil {
+            let vault <- MyToken.createEmptyVault(vaultType: Type<@MyToken.Vault>())
+            recipientAcct.storage.save(<-vault, to: MyToken.VaultStoragePath)
+            let vaultCap = recipientAcct.capabilities.storage.issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+            recipientAcct.capabilities.publish(vaultCap, at: MyToken.VaultPublicPath)
+            let receiverCap = recipientAcct.capabilities.storage.issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+            recipientAcct.capabilities.publish(receiverCap, at: MyToken.ReceiverPublicPath)
+        }
+        self.recipientVault = recipientAcct.capabilities.get<&{FungibleToken.Vault}>(MyToken.ReceiverPublicPath).borrow()
             ?? panic("Recipient vault not found")
-        log("Borrowed recipient vault")
+        self.initialRecipientBalance = self.recipientVault.balance
 
-        // Transfer half the amount
-        let tokens <- signerVault.withdraw(amount: amount / 2.0, from: signer.address)
-        recipientVault.deposit(amount: tokens.balance)
-        log("Transferred ".concat(tokens.balance.toString()).concat(" tokens to ").concat(recipient.toString()))
+        if signer.storage.borrow<&MyToken.Vault>(from: MyToken.VaultStoragePath) == nil {
+            let vault <- MyToken.createEmptyVault(vaultType: Type<@MyToken.Vault>())
+            signer.storage.save(<-vault, to: MyToken.VaultStoragePath)
+            let vaultCap = signer.capabilities.storage.issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+            signer.capabilities.publish(vaultCap, at: MyToken.VaultPublicPath)
+            let receiverCap = signer.capabilities.storage.issue<&MyToken.Vault>(MyToken.VaultStoragePath)
+            signer.capabilities.publish(receiverCap, at: MyToken.ReceiverPublicPath)
+        }
+        self.senderVault = signer.storage.borrow<auth(FungibleToken.Withdraw) &MyToken.Vault>(from: MyToken.VaultStoragePath)
+            ?? panic("Sender vault not found")
+        self.initialSenderBalance = self.senderVault.balance
+    }
 
-        // Destroy temporary vault
-        destroy tokens
-        log("Transaction completed")
+    execute {
+        self.admin.mintTokens(amount: amount, recipient: self.signerAddress)
+        let tokens <- self.senderVault.withdraw(amount: amount / 2.0)
+        self.recipientVault.deposit(from: <-tokens)
+    }
+
+    post {
+        self.senderVault.balance == self.initialSenderBalance + amount / 2.0: "Sender balance incorrect"
+        self.recipientVault.balance == self.initialRecipientBalance + amount / 2.0: "Recipient balance incorrect"
     }
 }
