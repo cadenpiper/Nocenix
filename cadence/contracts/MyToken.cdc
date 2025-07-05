@@ -10,12 +10,12 @@ access(all) contract MyToken: FungibleToken {
     access(all) let ReceiverPublicPath: PublicPath
     access(all) let AdminStoragePath: StoragePath
 
-    // Events
+    // Events (update TokensMinted to include recipient)
     access(all) event TokensInitialized(initialSupply: UFix64)
-    access(all) event TokensMinted(amount: UFix64, to: Address)
+    access(all) event TokensMinted(amount: UFix64, to: Address?) // Modified
     access(all) event TokensTransferred(amount: UFix64, from: Address?, to: Address?)
 
-    // Vault resource
+    // Vault resource (unchanged)
     access(all) resource Vault: FungibleToken.Vault {
         access(all) var balance: UFix64
 
@@ -23,7 +23,6 @@ access(all) contract MyToken: FungibleToken {
             self.balance = balance
         }
 
-        // Withdraw tokens
         access(FungibleToken.Withdraw) fun withdraw(amount: UFix64): @{FungibleToken.Vault} {
             pre { amount <= self.balance: "Insufficient balance" }
             self.balance = self.balance - amount
@@ -31,7 +30,6 @@ access(all) contract MyToken: FungibleToken {
             return <- create Vault(balance: amount)
         }
 
-        // Deposit tokens
         access(all) fun deposit(from: @{FungibleToken.Vault}) {
             let vault <- from as! @MyToken.Vault
             self.balance = self.balance + vault.balance
@@ -39,17 +37,14 @@ access(all) contract MyToken: FungibleToken {
             destroy vault
         }
 
-        // Get balance
         access(all) view fun getBalance(): UFix64 {
             return self.balance
         }
 
-        // Create empty vault
         access(all) fun createEmptyVault(): @{FungibleToken.Vault} {
             return <- create Vault(balance: 0.0)
         }
 
-        // Query supported vault types
         access(all) view fun getSupportedVaultTypes(): {Type: Bool} {
             let supportedTypes: {Type: Bool} = {}
             supportedTypes[self.getType()] = true
@@ -60,12 +55,10 @@ access(all) contract MyToken: FungibleToken {
             return self.getSupportedVaultTypes()[type] ?? false
         }
 
-        // Check withdrawable amount
         access(all) view fun isAvailableToWithdraw(amount: UFix64): Bool {
             return amount <= self.balance
         }
 
-        // Metadata views
         access(all) view fun getViews(): [Type] {
             return []
         }
@@ -75,26 +68,20 @@ access(all) contract MyToken: FungibleToken {
         }
     }
 
-    // Admin resource
-    access(all) resource Admin {
-        access(all) fun mintTokens(amount: UFix64, recipient: Address) {
-            let recipientVault = getAccount(recipient)
-                .capabilities.get<&MyToken.Vault>(MyToken.ReceiverPublicPath)
-                .borrow()
-                ?? panic("Recipient vault not found")
-            let vault <- create Vault(balance: amount)
+    // Replace Admin with Minter
+    access(all) resource Minter {
+        access(all) fun mintTokens(amount: UFix64, to: Address?): @MyToken.Vault {
             MyToken.totalSupply = MyToken.totalSupply + amount
-            recipientVault.deposit(from: <-vault)
-            emit TokensMinted(amount: amount, to: recipient)
+            let vault <- create Vault(balance: amount)
+            emit TokensMinted(amount: amount, to: to)
+            return <-vault
         }
     }
 
-    // Create empty vault
     access(all) fun createEmptyVault(vaultType: Type): @{FungibleToken.Vault} {
         return <- create Vault(balance: 0.0)
     }
 
-    // Metadata views
     access(all) view fun getContractViews(resourceType: Type?): [Type] {
         return []
     }
@@ -103,7 +90,6 @@ access(all) contract MyToken: FungibleToken {
         return nil
     }
 
-    // Contract initializer
     init() {
         self.totalSupply = 0.0
         self.VaultStoragePath = /storage/MyTokenVault
@@ -111,15 +97,13 @@ access(all) contract MyToken: FungibleToken {
         self.ReceiverPublicPath = /public/MyTokenReceiver
         self.AdminStoragePath = /storage/MyTokenAdmin
 
-        // Save admin
-        let admin <- create Admin()
-        self.account.storage.save(<-admin, to: self.AdminStoragePath)
+        // Save Minter (changed from Admin)
+        let minter <- create Minter()
+        self.account.storage.save(<-minter, to: self.AdminStoragePath)
 
-        // Save empty vault
         let vault <- create Vault(balance: 0.0)
         self.account.storage.save(<-vault, to: self.VaultStoragePath)
 
-        // Publish capabilities
         let vaultCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
         self.account.capabilities.publish(vaultCap, at: self.VaultPublicPath)
         let receiverCap = self.account.capabilities.storage.issue<&MyToken.Vault>(self.VaultStoragePath)
