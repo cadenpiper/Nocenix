@@ -90,6 +90,20 @@
 		"recipient-account": {
 			"address": "179b6b1cb6755e31",
 			"key": "f71812b1cd6c65c93a5c859e961e12619d53575c391affc1d2d4198d8fc984ad"
+		},
+		"recipient-account-testnet": {
+			"address": "45866e6d54709704",
+			"key": {
+				"type": "file",
+				"location": "recipient-account-testnet.pkey"
+			}
+		},
+		"testnet-account": {
+			"address": "aacbe529890fe9f2",
+			"key": {
+				"type": "file",
+				"location": "testnet-account.pkey"
+			}
 		}
 	},
 	"deployments": {
@@ -97,6 +111,11 @@
 			"emulator-account": [
 				"Nocenix",
 				"NocenixVesting"
+			]
+		},
+		"testnet": {
+			"testnet-account": [
+				"Nocenix"
 			]
 		}
 	}
