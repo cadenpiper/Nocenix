@@ -3,7 +3,6 @@ import Nocenix from "Nocenix"
 
 transaction(amount: UFix64, recipient: Address) {
     let admin: &Nocenix.Admin
-    let recipientVault: &{FungibleToken.Vault}
 
     prepare(adminAcct: auth(Storage, Capabilities) &Account, recipientAcct: auth(Storage, Capabilities) &Account) {
         // Borrow Admin resource
@@ -23,14 +22,10 @@ transaction(amount: UFix64, recipient: Address) {
                 .issue<&{FungibleToken.Vault}>(Nocenix.VaultStoragePath)
             recipientAcct.capabilities.publish(receiverCap, at: Nocenix.ReceiverPublicPath)
         }
-
-        // Borrow recipient vault
-        let vaultCap = recipientAcct.capabilities.get<&{FungibleToken.Vault}>(Nocenix.ReceiverPublicPath)
-        self.recipientVault = vaultCap.borrow() ?? panic("Recipient vault not found")
     }
 
     execute {
-        // Call mintAndBurn to burn from contract vault and mint to recipient
-        self.admin.mintAndBurn(amount: amount, to: recipient)
+        // Call mint to mint tokens to recipient
+        self.admin.mint(amount: amount, to: recipient)
     }
 }

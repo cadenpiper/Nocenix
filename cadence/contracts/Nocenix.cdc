@@ -10,13 +10,11 @@ access(all) contract Nocenix: FungibleToken {
     access(all) let ReceiverPublicPath: PublicPath
     access(all) let AdminStoragePath: StoragePath
 
-    // Events
     access(all) event TokensInitialized(initialSupply: UFix64)
     access(all) event TokensMinted(amount: UFix64, to: Address?)
     access(all) event TokensBurned(amount: UFix64, from: Address?)
     access(all) event TokensTransferred(amount: UFix64, from: Address?, to: Address?)
 
-    // Metadata views
     access(all) view fun getContractViews(resourceType: Type?): [Type] {
         return [
             Type<FungibleTokenMetadataViews.FTView>(),
@@ -26,7 +24,6 @@ access(all) contract Nocenix: FungibleToken {
         ]
     }
 
-    // Resolve metadata
     access(all) fun resolveContractView(resourceType: Type?, viewType: Type): AnyStruct? {
         switch viewType {
             case Type<FungibleTokenMetadataViews.FTView>():
@@ -131,18 +128,10 @@ access(all) contract Nocenix: FungibleToken {
     }
 
     access(all) resource Admin {
-        access(all) fun mintAndBurn(amount: UFix64, to: Address) {
-            let contractVault = Nocenix.account.storage.borrow<&Nocenix.Vault>(from: Nocenix.VaultStoragePath)
-                ?? panic("Contract vault not found")
-            let contractBalance = contractVault.balance
-            let currentSupply = Nocenix.totalSupply
-            let maxSupply = Nocenix.maxSupply
-
-            assert(amount <= contractBalance, message: "Insufficient contract balance")
-            assert(currentSupply <= maxSupply, message: "Exceeds max supply")
-
-            contractVault.burn(amount: amount)
-
+        access(all) fun mint(amount: UFix64, to: Address) {
+            pre {
+                Nocenix.totalSupply + amount <= Nocenix.maxSupply: "Exceeds max supply"
+            }
             Nocenix.totalSupply = Nocenix.totalSupply + amount
             let userVaultCap: Capability<&{FungibleToken.Vault}> = getAccount(to).capabilities.get<&{FungibleToken.Vault}>(Nocenix.ReceiverPublicPath)
             let userVault: &{FungibleToken.Vault} = userVaultCap.borrow() ?? panic("User vault not found")
@@ -157,20 +146,12 @@ access(all) contract Nocenix: FungibleToken {
     }
 
     init() {
-        self.totalSupply = 1000000000.0
+        self.totalSupply = 0.0
         self.maxSupply = 1000000000.0
         self.VaultStoragePath = /storage/NocenixVault
         self.VaultPublicPath = /public/NocenixVault
         self.ReceiverPublicPath = /public/NocenixReceiver
         self.AdminStoragePath = /storage/NocenixAdmin
-
-        let vault <- create Vault(balance: self.totalSupply)
-        self.account.storage.save(<-vault, to: self.VaultStoragePath)
-
-        let vaultCap = self.account.capabilities.storage.issue<&Nocenix.Vault>(self.VaultStoragePath)
-        self.account.capabilities.publish(vaultCap, at: self.VaultPublicPath)
-        let receiverCap = self.account.capabilities.storage.issue<&Nocenix.Vault>(self.VaultStoragePath)
-        self.account.capabilities.publish(receiverCap, at: self.ReceiverPublicPath)
 
         let admin <- create Admin()
         self.account.storage.save(<-admin, to: self.AdminStoragePath)

@@ -43,10 +43,12 @@ Add more dependencies with `flow deps add`.
 flow emulator
 ```
 
+
 📦 Step 2: Deploy the Contract
 ```
 flow project deploy --network emulator
 ```
+
 
 📋 Step 3: Check Token Metadata
 ```
@@ -54,11 +56,13 @@ flow scripts execute cadence/scripts/GetTokenMetadata.cdc <emulator-account-addr
 ```
 Replace emulator-account-address with the address that deployed the contract. You can find this address in the flow.json file under accounts.
 
+
 👤 Step 4: Create a Recipient Account
 ```
 flow accounts create
 ```
 This will generate a new account in the flow.json file.
+
 
 💸 Step 5: Mint and Transfer Tokens to Recipient
 ```
@@ -69,6 +73,7 @@ flow transactions send cadence/transactions/MintAndTransfer.cdc 100.0 <recipient
   --network emulator
 ```
 Replace recipient-account-address with the address under the recipient account in flow.json.
+
 
 📊 Step 6: Check Balances
 ```
