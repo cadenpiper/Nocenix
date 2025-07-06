@@ -1,6 +1,11 @@
 {
 	"contracts": {
-		"MyToken": "./cadence/contracts/MyToken.cdc"
+		"Nocenix": {
+			"source": "./cadence/contracts/Nocenix.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7"
+			}
+		}
 	},
 	"dependencies": {
 		"Burner": {
@@ -83,13 +88,13 @@
 		},
 		"recipient-account": {
 			"address": "179b6b1cb6755e31",
-			"key": "74d6099230c17c80bd4e9711d51062d8bc95161586766f0f7aa65e3fd4a56f82"
+			"key": "4180d3e3ff0551d4c0715a7317cd84d2c7fb4d1dc2e8d1035a871d697132ca0f"
 		}
 	},
 	"deployments": {
 		"emulator": {
 			"emulator-account": [
-				"MyToken"
+				"Nocenix"
 			]
 		}
 	}
