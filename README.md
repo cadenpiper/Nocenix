@@ -7,6 +7,7 @@ This project implements the `Nocenix` fungible token on the Flow Blockchain, fea
 Essential resources for developing on Flow:
 
 - **[Flow Documentation](https://developers.flow.com/)** - Learn about [building](https://developers.flow.com/build/flow) on Flow.
+- **[Flow CLI](https://developers.flow.com/tools/flow-cli)** - Flow CLI docs
 - **[Cadence Documentation](https://cadence-lang.org/docs/language)** - Understand Cadence, Flow’s resource-oriented smart contract language.
 - **[Visual Studio Code](https://code.visualstudio.com/)** and **[Cadence Extension](https://marketplace.visualstudio.com/items?itemName=onflow.cadence)** - Use VSCode with the Cadence extension for syntax highlighting and code completion.
 - **[Flow Clients](https://developers.flow.com/tools/clients)** - Interact with your smart contracts using Flow clients.
