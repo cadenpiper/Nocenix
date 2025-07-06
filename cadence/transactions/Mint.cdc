@@ -1,3 +1,12 @@
+///////////////////////////////////////////////////////////////
+//                                                           //
+//      This transaction enables an admin to mint a          //
+//      specified amount of Nocenix tokens and               //
+//      deposit them into a recipient's vault,               //
+//      creating a new vault if the recipient doesn't        //
+//      have one.                                            //
+//                                                           //
+///////////////////////////////////////////////////////////////
 import FungibleToken from "FungibleToken"
 import Nocenix from "Nocenix"
 

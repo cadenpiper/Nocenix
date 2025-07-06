@@ -5,7 +5,8 @@
 			"aliases": {
 				"emulator": "f8d6e0586b0a20c7"
 			}
-		}
+		},
+		"NocenixVesting": "cadence/contracts/NocenixVesting.cdc"
 	},
 	"dependencies": {
 		"Burner": {
@@ -94,7 +95,8 @@
 	"deployments": {
 		"emulator": {
 			"emulator-account": [
-				"Nocenix"
+				"Nocenix",
+				"NocenixVesting"
 			]
 		}
 	}

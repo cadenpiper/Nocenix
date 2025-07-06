@@ -1,3 +1,10 @@
+///////////////////////////////////////////////////////////////
+//                                                           //
+//      This transaction allows a user to burn a             //
+//      specified amount of Nocenix tokens from their        //
+//      vault, reducing the total token supply.              //
+//                                                           //
+///////////////////////////////////////////////////////////////
 import FungibleToken from "FungibleToken"
 import Nocenix from "Nocenix"
 

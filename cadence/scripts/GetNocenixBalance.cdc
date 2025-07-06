@@ -1,3 +1,11 @@
+///////////////////////////////////////////////////////////////
+//                                                           //
+//      This script retrieves the Nocenix token balance      //
+//      of a specified recipient's vault and the total       //
+//      supply of Nocenix tokens, returning both values      //
+//      in a dictionary.                                     //
+//                                                           //
+///////////////////////////////////////////////////////////////
 import FungibleToken from "FungibleToken"
 import Nocenix from "Nocenix"
 

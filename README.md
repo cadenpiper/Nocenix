@@ -65,7 +65,7 @@ flow accounts create
 This will generate a new account in the flow.json file.
 
 
-💸 Step 5: Mint and Transfer Tokens to Recipient
+💸 Step 5: Mint and Transfer Tokens
 ```
 flow transactions send cadence/transactions/MintAndTransfer.cdc 100.0 <recipient-account-address>
   --authorizer emulator-account,recipient-account
@@ -73,10 +73,17 @@ flow transactions send cadence/transactions/MintAndTransfer.cdc 100.0 <recipient
   --payer emulator-account
   --network emulator
 ```
-Replace recipient-account-address with the address under the recipient account in flow.json.
+Mints 100 tokens. Replace recipient-account-address with the address under the recipient account in flow.json.
 
 
-📊 Step 6: Check Balances
+🔥Step 6: Burn Tokens
+```
+flow transactions send cadence/transactions/Burn.cdc 50.0 --signer <recipient-account-address> --network emulator
+```
+Burns 50 tokens.
+
+
+📊 Step 7: Check Balances
 ```
 flow scripts execute cadence/scripts/CheckBalances.cdc <emulator-account-address> <recipient-account-address> --network emulator
 ```

@@ -1,3 +1,11 @@
+///////////////////////////////////////////////////////////////
+//                                                           //
+//      This script retrieves metadata (name, symbol,        //
+//      description, URL, logos, and socials) for the        //
+//      Nocenix fungible token from it's contract and        //
+//      returns it in a dictionary.                          //
+//                                                           //
+///////////////////////////////////////////////////////////////
 import MetadataViews from "MetadataViews"
 import FungibleTokenMetadataViews from "FungibleTokenMetadataViews"
 import Nocenix from "Nocenix"
