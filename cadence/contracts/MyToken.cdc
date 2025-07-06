@@ -1,5 +1,6 @@
-// File: MyToken.cdc
 import FungibleToken from "FungibleToken"
+import MetadataViews from "MetadataViews"
+import FungibleTokenMetadataViews from "FungibleTokenMetadataViews"
 
 access(all) contract MyToken: FungibleToken {
     access(all) var totalSupply: UFix64
@@ -9,10 +10,57 @@ access(all) contract MyToken: FungibleToken {
     access(all) let ReceiverPublicPath: PublicPath
     access(all) let AdminStoragePath: StoragePath
 
+    // Events
     access(all) event TokensInitialized(initialSupply: UFix64)
     access(all) event TokensMinted(amount: UFix64, to: Address?)
     access(all) event TokensBurned(amount: UFix64, from: Address?)
     access(all) event TokensTransferred(amount: UFix64, from: Address?, to: Address?)
+
+    // Metadata views
+    access(all) view fun getContractViews(resourceType: Type?): [Type] {
+        return [
+            Type<FungibleTokenMetadataViews.FTView>(),
+            Type<FungibleTokenMetadataViews.FTDisplay>(),
+            Type<FungibleTokenMetadataViews.FTVaultData>(),
+            Type<FungibleTokenMetadataViews.TotalSupply>()
+        ]
+    }
+
+    // Resolve metadata views
+    access(all) fun resolveContractView(resourceType: Type?, viewType: Type): AnyStruct? {
+        switch viewType {
+            case Type<FungibleTokenMetadataViews.FTView>():
+                return FungibleTokenMetadataViews.FTView(
+                    ftDisplay: self.resolveContractView(resourceType: nil, viewType: Type<FungibleTokenMetadataViews.FTDisplay>()) as! FungibleTokenMetadataViews.FTDisplay?,
+                    ftVaultData: self.resolveContractView(resourceType: nil, viewType: Type<FungibleTokenMetadataViews.FTVaultData>()) as! FungibleTokenMetadataViews.FTVaultData?
+                )
+            case Type<FungibleTokenMetadataViews.FTDisplay>():
+                return FungibleTokenMetadataViews.FTDisplay(
+                    name: "MyToken",
+                    symbol: "MTK",
+                    description: "A fungible token for the MyToken project on Flow.",
+                    externalURL: MetadataViews.ExternalURL(""), // Placeholder, add later
+                    logos: MetadataViews.Medias([]), // Empty logos
+                    socials: {} // Empty socials
+                )
+            case Type<FungibleTokenMetadataViews.FTVaultData>():
+                return FungibleTokenMetadataViews.FTVaultData(
+                    storagePath: self.VaultStoragePath,
+                    receiverPath: self.ReceiverPublicPath,
+                    metadataPath: self.VaultPublicPath,
+                    receiverLinkedType: Type<&MyToken.Vault>(),
+                    metadataLinkedType: Type<&MyToken.Vault>(),
+                    createEmptyVaultFunction: (fun(): @{FungibleToken.Vault} {
+                        return <-MyToken.createEmptyVault(vaultType: Type<@MyToken.Vault>())
+                    })
+                )
+            case Type<FungibleTokenMetadataViews.TotalSupply>():
+                return FungibleTokenMetadataViews.TotalSupply(
+                    totalSupply: MyToken.totalSupply
+                )
+        }
+        return nil
+    }
 
     access(all) resource Vault: FungibleToken.Vault {
         access(all) var balance: UFix64
@@ -65,11 +113,11 @@ access(all) contract MyToken: FungibleToken {
         }
 
         access(all) view fun getViews(): [Type] {
-            return []
+            return MyToken.getContractViews(resourceType: nil)
         }
 
         access(all) fun resolveView(_ view: Type): AnyStruct? {
-            return nil
+            return MyToken.resolveContractView(resourceType: nil, viewType: view)
         }
     }
 
@@ -97,14 +145,6 @@ access(all) contract MyToken: FungibleToken {
 
     access(all) fun createEmptyVault(vaultType: Type): @{FungibleToken.Vault} {
         return <- create Vault(balance: 0.0)
-    }
-
-    access(all) view fun getContractViews(resourceType: Type?): [Type] {
-        return []
-    }
-
-    access(all) fun resolveContractView(resourceType: Type?, viewType: Type): AnyStruct? {
-        return nil
     }
 
     init() {
