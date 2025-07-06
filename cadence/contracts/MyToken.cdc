@@ -1,3 +1,4 @@
+// File: MyToken.cdc
 import FungibleToken from "FungibleToken"
 
 access(all) contract MyToken: FungibleToken {
@@ -74,7 +75,6 @@ access(all) contract MyToken: FungibleToken {
 
     access(all) resource Admin {
         access(all) fun mintAndBurn(amount: UFix64, to: Address) {
-            // Borrow contract vault to retrieve values: balance, current supply, and max supply
             let contractVault = MyToken.account.storage.borrow<&MyToken.Vault>(from: MyToken.VaultStoragePath)
                 ?? panic("Contract vault not found")
             let contractBalance = contractVault.balance
@@ -84,13 +84,9 @@ access(all) contract MyToken: FungibleToken {
             assert(amount <= contractBalance, message: "Insufficient contract balance")
             assert(currentSupply <= maxSupply, message: "Exceeds max supply")
 
-            // Burn tokens before minting
             contractVault.burn(amount: amount)
 
-            // Recalibrate total supply
             MyToken.totalSupply = MyToken.totalSupply + amount
-            
-            // Mint amount to user account
             let userVaultCap: Capability<&{FungibleToken.Vault}> = getAccount(to).capabilities.get<&{FungibleToken.Vault}>(MyToken.ReceiverPublicPath)
             let userVault: &{FungibleToken.Vault} = userVaultCap.borrow() ?? panic("User vault not found")
             let newVault <- create Vault(balance: amount)
